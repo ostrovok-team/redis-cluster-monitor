@@ -12,5 +12,5 @@ It checks if all Redis servers are listening to the same master, if cluster has 
 
 ### Usage:
 
-    redistest.rb <serv1:port1> <serv2:port2> [serv3:port3] [serv4:port4] ...
+    redistest.rb <serv1[:port1]> <serv2[:port2]> [serv3[:port3]] [serv4[:port4]] ...
 
