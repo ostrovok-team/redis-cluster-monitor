@@ -32,9 +32,12 @@ end
 
 redis_hosts = Array.new()
 ARGV.each do |arg|
-    next unless arg =~ /^"?([0-9.a-z]+):([0-9]+)"?$/
-    r = ReplicatedRedis.new({ :host => $1,
-                              :port => $2,
+    next unless arg =~ /^"?([0-9.a-z]+)(?:[:]([0-9]+))?"?$/
+    host = $1
+    port = $2.to_i
+    port = 6379 if port == 0
+    r = ReplicatedRedis.new({ :host => host,
+                              :port => port,
                               :timeout => 0.5})
     begin r.randomkey rescue next end
     redis_hosts << r
@@ -73,6 +76,7 @@ end
 
 keyname = "replicationtestkey"+Time.now.to_i.to_s
 redis_master[keyname] = keyname
+sleep 0.5
 redis_slaves.each do |redis_server|
     unless redis_server[keyname] == keyname
         fail "Redis server #{redis_server.inspect} failed replication"
