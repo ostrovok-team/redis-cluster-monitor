@@ -1,6 +1,6 @@
 #!/usr/bin/ruby
-require "rubygems"
-require "redis"
+require 'rubygems'
+require 'redis'
 
 class ReplicatedRedis < Redis
     def is_master?
