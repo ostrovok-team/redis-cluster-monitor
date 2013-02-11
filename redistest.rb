@@ -31,6 +31,8 @@ def fail(str)
 end
 
 redis_hosts = Array.new()
+redis_masters = Array.new()
+redis_slaves = Array.new()
 ARGV.each do |arg|
     next unless arg =~ /^"?([0-9.a-z]+)(?:[:]([0-9]+))?"?$/
     host = $1
@@ -41,30 +43,19 @@ ARGV.each do |arg|
                               :timeout => 0.5})
     begin r.randomkey rescue next end
     redis_hosts << r
+    if r.is_master?
+        redis_masters << r
+    elsif r.is_slave?
+        redis_slaves << r
+    else
+        fail "Unknown Redis role: #{r.info["role"]}"
+    end
 end
 
 fail "No available redis servers!" if redis_hosts.empty?
-# Find master/slave
-redis_masters = Array.new()
-redis_slaves = Array.new()
-redis_hosts.each { |redis_server|
-    if redis_server.is_master?
-        redis_masters << redis_server
-    elsif redis_server.is_slave?
-        redis_slaves << redis_server
-    else
-        fail "Unknown Redis role: #{redis_server.info["role"]}"
-    end
-}
 
-if redis_masters.length > 1
-    rms = Array.new
-    redis_masters.each do |rm|
-        rms << rm.inspect.to_s
-    end
-    fail "More than one master: "+rms.join(",")
-end
-fail "No Master!" if redis_masters.length < 1
+fail "More than one master: "+redis_masters.map{|r| r.inspect.to_s }.join(",") if redis_masters.length > 1
+fail "No Master!" if redis_masters.empty?
 fail "No Slaves!" if redis_slaves.empty?
 
 redis_master = redis_masters[0]
@@ -78,8 +69,6 @@ keyname = "replicationtestkey"+Time.now.to_i.to_s
 redis_master[keyname] = keyname
 sleep 0.5
 redis_slaves.each do |redis_server|
-    unless redis_server[keyname] == keyname
-        fail "Redis server #{redis_server.inspect} failed replication"
-    end
+    fail "Redis server #{redis_server.inspect} failed replication" unless redis_server[keyname] == keyname
 end
 redis_master.del(keyname)
